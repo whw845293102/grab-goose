@@ -1,0 +1,732 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>抓动物</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+    body {
+      font-family: 'Microsoft YaHei', Arial, sans-serif;
+      background: linear-gradient(160deg, #1b4332 0%, #081c15 100%);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 12px 16px 32px;
+      user-select: none;
+    }
+
+    .title {
+      color: #fff;
+      font-size: 1.7em;
+      font-weight: bold;
+      margin-bottom: 8px;
+      text-shadow: 0 2px 10px rgba(0,0,0,0.5);
+    }
+
+    /* ── 动物选择 ── */
+    .animal-selector {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      justify-content: center;
+      margin-bottom: 8px;
+      max-width: 360px;
+    }
+    .animal-btn {
+      padding: 6px 12px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-radius: 18px;
+      background: rgba(255,255,255,0.1);
+      color: #fff;
+      font-size: 0.82em;
+      cursor: pointer;
+      transition: all 0.18s;
+    }
+    .animal-btn:hover { background: rgba(255,255,255,0.2); }
+    .animal-btn.active {
+      background: #52b788;
+      border-color: #52b788;
+      box-shadow: 0 2px 10px rgba(82,183,136,0.5);
+    }
+
+    /* ── 难度选择 ── */
+    .diff-selector {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+    .diff-btn {
+      padding: 5px 16px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-radius: 14px;
+      background: rgba(255,255,255,0.08);
+      color: rgba(255,255,255,0.8);
+      font-size: 0.8em;
+      cursor: pointer;
+      transition: all 0.18s;
+    }
+    .diff-btn:hover { background: rgba(255,255,255,0.15); }
+    .diff-btn.active {
+      background: #e63946;
+      border-color: #e63946;
+      color: #fff;
+      box-shadow: 0 2px 10px rgba(230,57,70,0.5);
+    }
+    .diff-btn.active.easy {
+      background: #52b788;
+      border-color: #52b788;
+      box-shadow: 0 2px 10px rgba(82,183,136,0.5);
+    }
+
+    /* ── 声音开关 ── */
+    .sound-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 10px;
+      color: rgba(255,255,255,0.75);
+      font-size: 0.82em;
+    }
+    .toggle-wrap {
+      position: relative;
+      width: 44px; height: 24px;
+      cursor: pointer;
+    }
+    .toggle-wrap input {
+      opacity: 0; width: 0; height: 0; position: absolute;
+    }
+    .toggle-track {
+      position: absolute; inset: 0;
+      background: rgba(255,255,255,0.2);
+      border-radius: 12px;
+      transition: background 0.25s;
+    }
+    .toggle-track::after {
+      content: '';
+      position: absolute;
+      width: 18px; height: 18px;
+      border-radius: 50%;
+      background: #fff;
+      top: 3px; left: 3px;
+      transition: transform 0.25s, box-shadow 0.25s;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.35);
+    }
+    .toggle-wrap input:checked + .toggle-track {
+      background: #52b788;
+    }
+    .toggle-wrap input:checked + .toggle-track::after {
+      transform: translateX(20px);
+    }
+    .sound-label { user-select: none; }
+
+    .score-bar {
+      display: flex;
+      gap: 24px;
+      color: rgba(255,255,255,0.85);
+      font-size: 0.9em;
+      margin-bottom: 10px;
+    }
+    .score-bar strong { color: #b7e4c7; }
+
+    .pot-outer { position: relative; margin-bottom: 14px; }
+    .handle {
+      position: absolute;
+      width: 32px; height: 22px;
+      background: #6d4c41;
+      border: 3px solid #8d6e63;
+      border-radius: 10px 10px 0 0;
+      top: 6px; z-index: 0;
+    }
+    .handle.left  { left: -20px; }
+    .handle.right { right: -20px; }
+
+    .pot {
+      position: relative;
+      width: 320px; height: 280px;
+      background: radial-gradient(ellipse at 50% 38%, #5c4033 0%, #3e2723 100%);
+      border-radius: 28% 28% 48% 48% / 18% 18% 38% 38%;
+      border: 4px solid #6d4c41;
+      overflow: hidden;
+      box-shadow: 0 10px 36px rgba(0,0,0,0.6), inset 0 -14px 28px rgba(0,0,0,0.35);
+      z-index: 1;
+    }
+    .pot::before {
+      content: '';
+      position: absolute;
+      top: 12px; left: 30px; right: 30px; height: 36px;
+      background: rgba(255,255,255,0.06);
+      border-radius: 50%;
+      pointer-events: none;
+    }
+
+    /* ── 动物卡片 ── */
+    .animal {
+      position: absolute;
+      width: 60px; height: 60px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      border: 2.5px solid rgba(255,255,255,0.45);
+      box-shadow: 0 3px 12px rgba(0,0,0,0.5);
+      transition: transform 0.12s;
+      overflow: hidden;
+    }
+    .animal:hover  { transform: scale(1.15); }
+    .animal:active { transform: scale(0.88); }
+    .animal.fly-out {
+      animation: fly-out 0.28s ease-in forwards;
+      pointer-events: none;
+    }
+    @keyframes fly-out {
+      0%   { transform: scale(1);    opacity: 1; }
+      60%  { transform: scale(1.35); opacity: 0.5; }
+      100% { transform: scale(0);    opacity: 0; }
+    }
+    /* PNG 图片填满圆形 */
+    .animal img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      border-radius: 50%;
+      display: block;
+    }
+    /* 图片加载失败时显示 emoji */
+    .animal .emoji-fallback {
+      font-size: 2em;
+      line-height: 1;
+    }
+
+    /* ── 格子区 ── */
+    .slots-wrap {
+      background: rgba(0,0,0,0.32);
+      border: 2px solid rgba(255,255,255,0.12);
+      border-radius: 16px;
+      padding: 10px 14px 12px;
+      margin-bottom: 14px;
+    }
+    .slots-hint {
+      text-align: center;
+      color: rgba(255,255,255,0.5);
+      font-size: 0.7em;
+      margin-bottom: 7px;
+    }
+    .slots-row { display: flex; gap: 7px; flex-wrap: wrap; justify-content: center; }
+    .slot {
+      width: 50px; height: 50px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.08);
+      border: 2px dashed rgba(255,255,255,0.25);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+      overflow: hidden;
+    }
+    .slot.filled { border-style: solid; border-color: rgba(255,255,255,0.6); }
+    .slot.flash  { animation: slot-flash 0.42s ease; }
+    @keyframes slot-flash {
+      0%,100% { filter: brightness(1); }
+      40%     { filter: brightness(1.8); transform: scale(1.15); }
+    }
+    .slot img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      border-radius: 50%;
+      display: block;
+    }
+    .slot .emoji-fallback { font-size: 1.6em; line-height: 1; }
+
+    /* ── 按钮 ── */
+    .btn {
+      padding: 11px 28px;
+      border: none; border-radius: 22px;
+      font-size: 1em; font-weight: bold; font-family: inherit;
+      cursor: pointer; transition: all 0.18s;
+      background: #52b788; color: #fff;
+      box-shadow: 0 4px 14px rgba(82,183,136,0.45);
+    }
+    .btn:hover  { background: #40916c; transform: translateY(-2px); }
+    .btn:active { transform: translateY(0); }
+
+    /* ── 搅一搅按钮 ── */
+    .stir-btn {
+      padding: 8px 22px;
+      border: none; border-radius: 18px;
+      font-size: 0.88em; font-weight: bold; font-family: inherit;
+      cursor: pointer; transition: all 0.18s;
+      background: #e9c46a; color: #5a3e00;
+      box-shadow: 0 3px 10px rgba(233,196,106,0.45);
+      margin-bottom: 10px;
+    }
+    .stir-btn:hover  { background: #f4a261; transform: translateY(-2px); }
+    .stir-btn:active { transform: translateY(0) scale(0.95); }
+    .stir-btn:disabled { opacity: 0.45; cursor: default; transform: none; }
+
+    /* 搅动动画 */
+    @keyframes stir-shake {
+      0%,100% { transform: rotate(0deg); }
+      20%     { transform: rotate(-6deg) scale(1.05); }
+      40%     { transform: rotate(6deg)  scale(1.05); }
+      60%     { transform: rotate(-4deg); }
+      80%     { transform: rotate(4deg);  }
+    }
+    .pot.stirring .animal {
+      animation: stir-shake 0.5s ease;
+    }
+
+    /* ── 文件清单弹窗 ── */
+    .file-tip {
+      margin-top: 10px;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 12px;
+      padding: 10px 16px;
+      color: rgba(255,255,255,0.7);
+      font-size: 0.72em;
+      max-width: 340px;
+      line-height: 1.7;
+    }
+    .file-tip b { color: #b7e4c7; }
+
+    /* ── 结果浮层 ── */
+    .overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.78); z-index: 300;
+      align-items: center; justify-content: center;
+    }
+    .overlay.show { display: flex; }
+    .result-card {
+      background: #fff; border-radius: 24px;
+      padding: 36px 28px; text-align: center; width: 285px;
+      animation: card-pop 0.32s cubic-bezier(0.34,1.56,0.64,1);
+    }
+    @keyframes card-pop {
+      from { transform: scale(0.65); opacity: 0; }
+      to   { transform: scale(1);    opacity: 1; }
+    }
+    .r-icon  { font-size: 3.8em; margin-bottom: 8px; }
+    .r-title { font-size: 1.8em; font-weight: bold; margin-bottom: 8px; }
+    .r-msg   { color: #666; margin-bottom: 24px; line-height: 1.5; font-size: 0.95em; }
+  </style>
+</head>
+<body>
+
+<div class="title" id="game-title">🦆 抓动物</div>
+
+<div class="animal-selector" id="animal-selector">
+  <button class="animal-btn active" data-animal="duck">🦆 鸭子</button>
+  <button class="animal-btn" data-animal="cat">🐱 猫</button>
+  <button class="animal-btn" data-animal="dog">🐶 狗</button>
+  <button class="animal-btn" data-animal="cow">🐮 牛</button>
+  <button class="animal-btn" data-animal="sheep">🐑 羊</button>
+  <button class="animal-btn" data-animal="horse">🐴 马</button>
+  <button class="animal-btn" data-animal="elephant">🐘 象</button>
+  <button class="animal-btn" data-animal="hard">🔥 高级</button>
+</div>
+
+<div class="diff-selector">
+  <button class="diff-btn easy active" data-diff="normal">普通</button>
+  <button class="diff-btn" data-diff="hard">困难</button>
+</div>
+
+<div class="sound-row">
+  <label class="toggle-wrap">
+    <input type="checkbox" id="sound-toggle" checked />
+    <span class="toggle-track"></span>
+  </label>
+  <span class="sound-label" id="sound-label">🔊 声音开</span>
+</div>
+
+<div class="score-bar">
+  <span>🐾 剩余 <strong id="count-remain">0</strong></span>
+  <span>✨ 消除 <strong id="count-elim">0</strong> 组</span>
+</div>
+
+<div class="pot-outer">
+  <div class="handle left"></div>
+  <div class="handle right"></div>
+  <div class="pot" id="pot"></div>
+</div>
+
+<button class="stir-btn" id="stir-btn">🥄 搅一搅</button>
+
+<div class="slots-wrap">
+  <div class="slots-hint" id="slots-hint">集满 3 只相同即可消除，格子满则游戏结束</div>
+  <div class="slots-row" id="slots"></div>
+</div>
+
+<button class="btn" id="restart-btn">🔄 重新开始</button>
+
+<!-- 文件清单提示（可删除） -->
+<div class="file-tip">
+  📁 <b>需要准备的文件：</b><br>
+  <b>images/</b> 文件夹：duck_yellow.png、duck_blue.png、duck_pink.png、duck_green.png、duck_purple.png（其余动物同理，共 35 张）<br>
+  <b>sounds/</b> 文件夹：duck.mp3、cat.mp3、dog.mp3、cow.mp3、sheep.mp3、horse.mp3、elephant.mp3（共 7 个）<br>
+  图片未放入前会显示 emoji 占位符，音频未放入前静音。
+</div>
+
+<div class="overlay" id="overlay">
+  <div class="result-card">
+    <div class="r-icon"  id="r-icon"></div>
+    <div class="r-title" id="r-title"></div>
+    <div class="r-msg"   id="r-msg"></div>
+    <button class="btn" id="again-btn">再来一局</button>
+  </div>
+</div>
+
+<script>
+/* ==================== 动物 / 颜色配置 ==================== */
+
+const COLORS = [
+  { id: 'yellow', bg: '#FFF0A0', label: '黄' },
+  { id: 'blue',   bg: '#BBDEFB', label: '蓝' },
+  { id: 'pink',   bg: '#FCE4EC', label: '粉' },
+  { id: 'green',  bg: '#C8E6C9', label: '绿' },
+  { id: 'purple', bg: '#E1BEE7', label: '紫' },
+];
+
+const ANIMALS = {
+  duck:     { emoji: '🦆', label: '🦆 鸭子' },
+  cat:      { emoji: '🐱', label: '🐱 猫'   },
+  dog:      { emoji: '🐶', label: '🐶 狗'   },
+  cow:      { emoji: '🐮', label: '🐮 牛'   },
+  sheep:    { emoji: '🐑', label: '🐑 羊'   },
+  horse:    { emoji: '🐴', label: '🐴 马'   },
+  elephant: { emoji: '🐘', label: '🐘 象'   },
+};
+
+/* 生成单种动物的 5 色 types */
+function buildTypes(animalKey) {
+  return COLORS.map(c => ({
+    id:        `${animalKey}_${c.id}`,
+    animalKey,
+    bg:        c.bg,
+    imgSrc:    `images/${animalKey}_${c.id}.png`,
+    emoji:     ANIMALS[animalKey].emoji,
+  }));
+}
+
+/* 高级模式：所有动物所有颜色 */
+function buildHardTypes() {
+  return Object.keys(ANIMALS).flatMap(k => buildTypes(k));
+}
+
+/* ==================== 声音播放 ==================== */
+let soundOn = true;
+const audioCache = {};
+
+document.getElementById('sound-toggle').addEventListener('change', function() {
+  soundOn = this.checked;
+  document.getElementById('sound-label').textContent = soundOn ? '🔊 声音开' : '🔇 声音关';
+});
+
+function playSound(animalKey) {
+  if (!soundOn) return;
+  try {
+    if (!audioCache[animalKey]) {
+      audioCache[animalKey] = new Audio(`sounds/${animalKey}.mp3`);
+    }
+    const a = audioCache[animalKey];
+    a.currentTime = 0;
+    a.play().catch(() => {});
+  } catch(e) {}
+}
+
+/* ==================== 游戏状态 ==================== */
+const POT_W = 312, POT_H = 272, ANIMAL_SIZE = 60;
+let currentAnimal = 'duck';
+let currentDiff   = 'normal';
+let TYPES      = [];
+let EACH_COUNT = 6;
+let MAX_SLOTS  = 6;
+
+let animals   = [];
+let slots     = [];
+let elimCount = 0;
+let dead      = false;
+
+function uid() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2);
+}
+function shuffle(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+function updateGameConfig() {
+  const isHardAnimal = currentAnimal === 'hard';
+  const isHardDiff   = currentDiff === 'hard';
+
+  if (isHardAnimal) {
+    TYPES      = buildHardTypes(); // 35 种
+    EACH_COUNT = 3;
+    MAX_SLOTS  = isHardDiff ? 5 : 7;
+  } else {
+    TYPES      = buildTypes(currentAnimal); // 5 种
+    EACH_COUNT = isHardDiff ? 4 : 6;
+    MAX_SLOTS  = isHardDiff ? 5 : 6;
+  }
+}
+
+function startGame() {
+  document.getElementById('overlay').classList.remove('show');
+  updateGameConfig();
+  animals = []; slots = []; elimCount = 0; dead = false;
+
+  const pool = [];
+  TYPES.forEach(t => {
+    for (let i = 0; i < EACH_COUNT; i++) {
+      pool.push({ ...t, uid: uid(), alive: true });
+    }
+  });
+  shuffle(pool);
+
+  const cx = POT_W / 2, cy = POT_H / 2, rx = 118, ry = 98;
+  pool.forEach((d, idx) => {
+    let x, y, tries = 0;
+    do {
+      const angle = Math.random() * Math.PI * 2;
+      const r = Math.sqrt(Math.random());
+      x = cx + rx * r * Math.cos(angle) - ANIMAL_SIZE / 2;
+      y = cy + ry * r * Math.sin(angle) - ANIMAL_SIZE / 2;
+      tries++;
+    } while (
+      (x < 2 || x + ANIMAL_SIZE > POT_W - 2 || y < 2 || y + ANIMAL_SIZE > POT_H - 2)
+      && tries < 200
+    );
+    d.x = x; d.y = y; d.z = idx + 1;
+  });
+
+  animals = pool;
+
+  const label = currentAnimal === 'hard'
+    ? '🔥 高级混合'
+    : ANIMALS[currentAnimal].label;
+  document.getElementById('game-title').textContent = label;
+  document.getElementById('slots-hint').textContent =
+    `集满 3 只相同即可消除，最多 ${MAX_SLOTS} 格，格子满则结束`;
+
+  renderPot();
+  renderSlots();
+  updateScore();
+}
+
+/* 创建动物元素（图片 + emoji 兜底） */
+function makeAnimalEl(d, size) {
+  const img = document.createElement('img');
+  img.src = d.imgSrc;
+  img.alt = d.emoji;
+  img.draggable = false;
+
+  const wrap = document.createElement('div');
+  // 如果图片加载失败，显示 emoji
+  img.onerror = () => {
+    wrap.innerHTML = `<span class="emoji-fallback">${d.emoji}</span>`;
+  };
+  wrap.appendChild(img);
+  return wrap;
+}
+
+function renderPot() {
+  const pot = document.getElementById('pot');
+  pot.querySelectorAll('.animal').forEach(el => el.remove());
+
+  animals
+    .filter(d => d.alive)
+    .sort((a, b) => a.z - b.z)
+    .forEach(d => {
+      const el = document.createElement('div');
+      el.className = 'animal';
+      // data-uid 用于 fly-out 动画查找，不依赖 z-index 字符串
+      el.dataset.uid = d.uid;
+      el.style.cssText =
+        `background:${d.bg};left:${d.x}px;top:${d.y}px;z-index:${d.z}`;
+      // 子元素不拦截点击，统一由锅处理
+      el.style.pointerEvents = 'none';
+
+      const img = document.createElement('img');
+      img.src = d.imgSrc;
+      img.alt = d.emoji;
+      img.draggable = false;
+      img.onerror = () => {
+        el.innerHTML = `<span class="emoji-fallback">${d.emoji}</span>`;
+      };
+      el.appendChild(img);
+      pot.appendChild(el);
+    });
+}
+
+/* 锅上统一点击：坐标命中检测，取 z-index 最高的动物 */
+document.getElementById('pot').addEventListener('click', e => {
+  if (dead) return;
+  const pot = document.getElementById('pot');
+  const rect = pot.getBoundingClientRect();
+  const cx = e.clientX - rect.left;
+  const cy = e.clientY - rect.top;
+
+  const hits = animals.filter(d => {
+    if (!d.alive) return false;
+    return cx >= d.x && cx <= d.x + ANIMAL_SIZE
+        && cy >= d.y && cy <= d.y + ANIMAL_SIZE;
+  });
+  if (!hits.length) return;
+
+  // 取最上层（z 最大）的动物
+  const top = hits.reduce((best, d) => d.z > best.z ? d : best);
+  pickAnimal(top.uid);
+});
+
+function renderSlots() {
+  const row = document.getElementById('slots');
+  row.innerHTML = '';
+  for (let i = 0; i < MAX_SLOTS; i++) {
+    const div = document.createElement('div');
+    div.className = 'slot' + (slots[i] ? ' filled' : '');
+    if (slots[i]) {
+      div.style.background = slots[i].bg;
+
+      const img = document.createElement('img');
+      img.src = slots[i].imgSrc;
+      img.alt = slots[i].emoji;
+      img.draggable = false;
+      img.onerror = () => {
+        div.innerHTML = `<span class="emoji-fallback">${slots[i].emoji}</span>`;
+      };
+      div.appendChild(img);
+    }
+    row.appendChild(div);
+  }
+}
+
+function updateScore() {
+  document.getElementById('count-remain').textContent = animals.filter(d => d.alive).length;
+  document.getElementById('count-elim').textContent   = elimCount;
+}
+
+function pickAnimal(id) {
+  if (dead) return;
+  if (slots.length >= MAX_SLOTS) return;
+
+  const d = animals.find(x => x.uid === id && x.alive);
+  if (!d) return;
+
+  playSound(d.animalKey);
+
+  // 用 data-uid 精确找到对应元素做飞出动画
+  const el = document.querySelector(`.animal[data-uid="${d.uid}"]`);
+  if (el) {
+    el.style.pointerEvents = 'none';
+    el.classList.add('fly-out');
+  }
+  d.alive = false;
+
+  let insertIdx = slots.length;
+  for (let i = slots.length - 1; i >= 0; i--) {
+    if (slots[i].id === d.id) { insertIdx = i + 1; break; }
+  }
+  slots.splice(insertIdx, 0, d);
+
+  setTimeout(() => {
+    renderPot();
+    renderSlots();
+    updateScore();
+    setTimeout(checkMatch, 60);
+  }, 200);
+}
+
+function checkMatch() {
+  if (dead) return;
+
+  for (let i = 0; i <= slots.length - 3; i++) {
+    if (slots[i].id === slots[i+1].id && slots[i].id === slots[i+2].id) {
+      const slotEls = document.querySelectorAll('.slot');
+      [i, i+1, i+2].forEach(k => { if (slotEls[k]) slotEls[k].classList.add('flash'); });
+
+      setTimeout(() => {
+        slots.splice(i, 3);
+        elimCount++;
+        renderSlots();
+        updateScore();
+        if (animals.every(d => !d.alive) && slots.length === 0) endGame(true);
+      }, 420);
+      return;
+    }
+  }
+
+  if (slots.length >= MAX_SLOTS) setTimeout(() => endGame(false), 200);
+}
+
+function endGame(win) {
+  dead = true;
+  const remaining = animals.filter(d => d.alive).length;
+  document.getElementById('r-icon').textContent  = win ? '🎉' : '😵';
+  document.getElementById('r-title').textContent = win ? '你赢了！' : '游戏结束';
+  document.getElementById('r-title').style.color  = win ? '#40916c' : '#e63946';
+  document.getElementById('r-msg').textContent   = win
+    ? `太厉害了！消除了 ${elimCount} 组！`
+    : `格子满了！还有 ${remaining} 只没抓到～`;
+  document.getElementById('overlay').classList.add('show');
+}
+
+/* ==================== 搅一搅 ==================== */
+function stirPot() {
+  if (dead) return;
+  const living = animals.filter(d => d.alive);
+  if (!living.length) return;
+
+  // 打乱所有存活动物的 z-index
+  const zVals = living.map(d => d.z);
+  shuffle(zVals);
+  living.forEach((d, i) => { d.z = zVals[i]; });
+
+  // 播放搅动动画
+  const pot = document.getElementById('pot');
+  pot.classList.add('stirring');
+  pot.addEventListener('animationend', () => pot.classList.remove('stirring'), { once: true });
+
+  // 短暂禁用按钮防重复触发
+  const btn = document.getElementById('stir-btn');
+  btn.disabled = true;
+  setTimeout(() => {
+    renderPot();
+    btn.disabled = false;
+  }, 520);
+}
+
+/* ==================== 按钮事件 ==================== */
+document.querySelectorAll('.animal-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.animal-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentAnimal = btn.dataset.animal;
+    startGame();
+  });
+});
+
+document.querySelectorAll('.diff-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.diff-btn').forEach(b => b.classList.remove('active', 'easy'));
+    btn.classList.add('active');
+    if (btn.dataset.diff === 'normal') btn.classList.add('easy');
+    currentDiff = btn.dataset.diff;
+    startGame();
+  });
+});
+
+document.getElementById('stir-btn').addEventListener('click', stirPot);
+document.getElementById('restart-btn').addEventListener('click', startGame);
+document.getElementById('again-btn').addEventListener('click', startGame);
+
+startGame();
+</script>
+</body>
+</html>
