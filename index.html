@@ -520,20 +520,17 @@ function startGame() {
   updateScore();
 }
 
-/* 创建动物元素（图片 + emoji 兜底） */
-function makeAnimalEl(d, size) {
-  const img = document.createElement('img');
-  img.src = d.imgSrc;
-  img.alt = d.emoji;
+/* 默认显示 emoji，图片加载成功后无缝替换，避免闪烁 */
+function setAnimalContent(el, d) {
+  el.innerHTML = `<span class="emoji-fallback">${d.emoji}</span>`;
+  const img = new Image();
   img.draggable = false;
-
-  const wrap = document.createElement('div');
-  // 如果图片加载失败，显示 emoji
-  img.onerror = () => {
-    wrap.innerHTML = `<span class="emoji-fallback">${d.emoji}</span>`;
+  img.onload = () => {
+    img.style.cssText = 'width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;';
+    el.innerHTML = '';
+    el.appendChild(img);
   };
-  wrap.appendChild(img);
-  return wrap;
+  img.src = d.imgSrc;
 }
 
 function renderPot() {
@@ -553,14 +550,7 @@ function renderPot() {
       // 子元素不拦截点击，统一由锅处理
       el.style.pointerEvents = 'none';
 
-      const img = document.createElement('img');
-      img.src = d.imgSrc;
-      img.alt = d.emoji;
-      img.draggable = false;
-      img.onerror = () => {
-        el.innerHTML = `<span class="emoji-fallback">${d.emoji}</span>`;
-      };
-      el.appendChild(img);
+      setAnimalContent(el, d);
       pot.appendChild(el);
     });
 }
@@ -594,14 +584,7 @@ function renderSlots() {
     if (slots[i]) {
       div.style.background = slots[i].bg;
 
-      const img = document.createElement('img');
-      img.src = slots[i].imgSrc;
-      img.alt = slots[i].emoji;
-      img.draggable = false;
-      img.onerror = () => {
-        div.innerHTML = `<span class="emoji-fallback">${slots[i].emoji}</span>`;
-      };
-      div.appendChild(img);
+      setAnimalContent(div, slots[i]);
     }
     row.appendChild(div);
   }
