@@ -363,6 +363,14 @@
 
 <button class="btn" id="restart-btn">🔄 重新开始</button>
 
+<!-- 文件清单提示（可删除） -->
+<div class="file-tip">
+  📁 <b>需要准备的文件：</b><br>
+  <b>images/</b> 文件夹：duck_yellow.png、duck_blue.png、duck_pink.png、duck_green.png、duck_purple.png（其余动物同理，共 35 张）<br>
+  <b>sounds/</b> 文件夹：duck.mp3、cat.mp3、dog.mp3、cow.mp3、sheep.mp3、horse.mp3、elephant.mp3（共 7 个）<br>
+  图片未放入前会显示 emoji 占位符，音频未放入前静音。
+</div>
+
 <div class="overlay" id="overlay">
   <div class="result-card">
     <div class="r-icon"  id="r-icon"></div>
@@ -512,12 +520,23 @@ function startGame() {
   updateScore();
 }
 
-/* 默认显示 emoji，图片加载成功后无缝替换，避免闪烁 */
+/* 已成功加载过的图片 URL，再次渲染时直接使用，避免闪回 emoji */
+const imgLoadedCache = new Set();
+
 function setAnimalContent(el, d) {
+  if (imgLoadedCache.has(d.imgSrc)) {
+    const img = document.createElement('img');
+    img.draggable = false;
+    img.src = d.imgSrc;
+    el.innerHTML = '';
+    el.appendChild(img);
+    return;
+  }
   el.innerHTML = `<span class="emoji-fallback">${d.emoji}</span>`;
   const img = new Image();
   img.draggable = false;
   img.onload = () => {
+    imgLoadedCache.add(d.imgSrc);
     img.style.cssText = 'width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;';
     el.innerHTML = '';
     el.appendChild(img);
